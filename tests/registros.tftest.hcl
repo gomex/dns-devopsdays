@@ -12,6 +12,14 @@ override_resource {
   }
 }
 
+# O mesmo para os registros que já existiam na Cloudflare (imports.tf).
+override_resource {
+  target = cloudflare_dns_record.this
+  values = {
+    id = "registro-de-teste"
+  }
+}
+
 variables {
   cloudflare_account_id = "conta-de-teste"
   cloudflare_zone_id    = "zona-de-teste"

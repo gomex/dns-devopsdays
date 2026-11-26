@@ -3,8 +3,18 @@
 
 mock_provider "cloudflare" {}
 
+# A zona é importada, e provider simulado não importa nada sozinho: este
+# bloco diz o que a "Cloudflare de mentira" devolve na importação.
+override_resource {
+  target = cloudflare_zone.this
+  values = {
+    id = "zona-de-teste"
+  }
+}
+
 variables {
   cloudflare_account_id = "conta-de-teste"
+  cloudflare_zone_id    = "zona-de-teste"
 }
 
 # O arquivo de verdade: confere os registros que existem hoje.

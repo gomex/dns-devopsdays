@@ -44,18 +44,35 @@ Além disso, o workflow **drift** roda todo dia e falha se alguém mudou algo di
 
 Essa parte é para quem mantém o repositório.
 
-1. **Bucket do state.** No R2 da conta da Cloudflare, crie o bucket `dns-devopsdays-terraform`.
-2. **Tokens do R2** (*R2 > Manage API tokens*), restritos a esse bucket:
-   - leitura (*Object Read*) → secrets do repositório `R2_LEITURA_ACCESS_KEY_ID` e `R2_LEITURA_SECRET_ACCESS_KEY`;
-   - escrita (*Object Read & Write*) → secrets do environment `producao` `R2_ESCRITA_ACCESS_KEY_ID` e `R2_ESCRITA_SECRET_ACCESS_KEY`.
-3. **Tokens da Cloudflare** (*My Profile > API Tokens*):
-   - leitura (*Zone: Read*, *DNS: Read*) → secret do repositório `CLOUDFLARE_TOKEN_LEITURA`;
-   - escrita (*Zone: Edit*, *DNS: Edit*, na conta toda, porque o Terraform cria a zona) → secret do environment `producao` `CLOUDFLARE_TOKEN_ESCRITA`.
-4. **Variável** do repositório `CLOUDFLARE_ACCOUNT_ID` com o ID da conta.
-5. **Primeiro apply.** Rode o workflow `terraform` na `main` e aprove. O resumo do job mostra os dois servidores de nome da Cloudflare.
-6. **Registro.br.** Troque os servidores DNS do domínio pelos dois do passo anterior. Quando a troca propagar, a saída `status_da_zona` passa de `pending` para `active`.
+Todos os tokens são **da conta** da Cloudflare (*Account API tokens*), e não de uma pessoa: se quem os criou sair, eles continuam funcionando. E os da Cloudflare enxergam **só** o `devopsdays.com.br`. Por isso a zona é criada à mão e o Terraform só a importa, já que um token restrito a uma zona não consegue criar a própria zona.
 
-Os registros novos só passam a responder depois do passo 6. Até lá, quem responde continua sendo o Registro.br.
+1. **Zona.** No painel, *Add a domain* → `devopsdays.com.br`, plano Free. Pule a revisão dos registros: quem cuida deles é este repositório. Copie o **Zone ID**, que fica na coluna da direita da visão geral da zona.
+2. **Bucket do state.** No R2, crie o bucket `dns-devopsdays-terraform`.
+3. **Tokens do R2** (*R2 > Manage API tokens > Create Account API token*), restritos a esse bucket:
+   - leitura (*Object Read only*) → secrets do repositório `R2_LEITURA_ACCESS_KEY_ID` e `R2_LEITURA_SECRET_ACCESS_KEY`;
+   - escrita (*Object Read & Write*) → secrets do environment `producao` `R2_ESCRITA_ACCESS_KEY_ID` e `R2_ESCRITA_SECRET_ACCESS_KEY`.
+4. **Tokens da Cloudflare** (*Manage Account > Account API Tokens > Create Token > Custom token*), com *Zone Resources: Include · Specific zone · devopsdays.com.br*:
+   - leitura (*Zone: Read*, *DNS: Read*) → secret do repositório `CLOUDFLARE_TOKEN_LEITURA`;
+   - escrita (*Zone: Edit*, *DNS: Edit*) → secret do environment `producao` `CLOUDFLARE_TOKEN_ESCRITA`.
+5. **Variáveis** do repositório: `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_ZONE_ID`.
+6. **Primeiro apply.** Rode o workflow `terraform` na `main` e aprove. Ele importa a zona e cria os registros, e o resumo do job mostra os dois servidores de nome da Cloudflare.
+7. **Registro.br.** Troque os servidores DNS do domínio pelos dois do passo anterior. Quando a troca propagar, a saída `status_da_zona` passa de `pending` para `active`.
+
+Os registros só passam a responder pela Cloudflare depois do passo 7. Até lá, quem responde continua sendo o Registro.br.
+
+Para cadastrar os segredos, use o `gh` no seu terminal: ele pede o valor sem mostrar na tela e nada fica no histórico.
+
+```bash
+R=gomex/dns-devopsdays
+gh variable set CLOUDFLARE_ACCOUNT_ID -R $R --body <id-da-conta>
+gh variable set CLOUDFLARE_ZONE_ID    -R $R --body <id-da-zona>
+gh secret set R2_LEITURA_ACCESS_KEY_ID      -R $R
+gh secret set R2_LEITURA_SECRET_ACCESS_KEY  -R $R
+gh secret set CLOUDFLARE_TOKEN_LEITURA      -R $R
+gh secret set R2_ESCRITA_ACCESS_KEY_ID      -R $R --env producao
+gh secret set R2_ESCRITA_SECRET_ACCESS_KEY  -R $R --env producao
+gh secret set CLOUDFLARE_TOKEN_ESCRITA      -R $R --env producao
+```
 
 ## Conclusão
 

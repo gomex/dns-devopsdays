@@ -44,7 +44,7 @@ Além disso, o workflow **drift** roda todo dia e falha se alguém mudou algo di
 
 Essa parte é para quem mantém o repositório.
 
-Todos os tokens são **da conta** da Cloudflare (*Account API tokens*), e não de uma pessoa: se quem os criou sair, eles continuam funcionando. E os da Cloudflare enxergam **só** o `devopsdays.com.br`. Por isso a zona é criada à mão e o Terraform só a importa, já que um token restrito a uma zona não consegue criar a própria zona.
+Todos os tokens são **da conta** da Cloudflare (*Account API tokens*), e não de uma pessoa: se quem os criou sair, eles continuam funcionando. E os da Cloudflare enxergam **só** o `devopsdays.com.br`. Por isso a zona foi criada à mão no painel e importada pelo Terraform no primeiro apply, já que um token restrito a uma zona não consegue criar a própria zona.
 
 1. **Zona.** No painel, *Add a domain* → `devopsdays.com.br`, plano Free. Pule a revisão dos registros: quem cuida deles é este repositório. Copie o **Zone ID**, que fica na coluna da direita da visão geral da zona.
 2. **Bucket do state.** No R2, crie o bucket `dns-devopsdays-terraform`.
@@ -54,8 +54,8 @@ Todos os tokens são **da conta** da Cloudflare (*Account API tokens*), e não d
 4. **Tokens da Cloudflare** (*Manage Account > Account API Tokens > Create Token > Custom token*), com *Zone Resources: Include · Specific zone · devopsdays.com.br*:
    - leitura (*Zone: Read*, *DNS: Read*) → secret do repositório `CLOUDFLARE_TOKEN_LEITURA`;
    - escrita (*Zone: Edit*, *DNS: Edit*) → secret do environment `producao` `CLOUDFLARE_TOKEN_ESCRITA`.
-5. **Variáveis** do repositório: `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_ZONE_ID`.
-6. **Primeiro apply.** Rode o workflow `terraform` na `main` e aprove. Ele importa a zona e cria os registros, e o resumo do job mostra os dois servidores de nome da Cloudflare.
+5. **Variável** do repositório: `CLOUDFLARE_ACCOUNT_ID`.
+6. **Primeiro apply.** Rode o workflow `terraform` na `main` e aprove. O resumo do job mostra os dois servidores de nome da Cloudflare. Se a zona for recriada um dia, o Terraform precisa de um bloco `import` para adotá-la de novo (veja o histórico do PR #1).
 7. **Registro.br.** Troque os servidores DNS do domínio pelos dois do passo anterior. Quando a troca propagar, a saída `status_da_zona` passa de `pending` para `active`.
 
 Os registros só passam a responder pela Cloudflare depois do passo 7. Até lá, quem responde continua sendo o Registro.br.
@@ -65,7 +65,6 @@ Para cadastrar os segredos, use o `gh` no seu terminal: ele pede o valor sem mos
 ```bash
 R=gomex/dns-devopsdays
 gh variable set CLOUDFLARE_ACCOUNT_ID -R $R --body <id-da-conta>
-gh variable set CLOUDFLARE_ZONE_ID    -R $R --body <id-da-zona>
 gh secret set R2_LEITURA_ACCESS_KEY_ID      -R $R
 gh secret set R2_LEITURA_SECRET_ACCESS_KEY  -R $R
 gh secret set CLOUDFLARE_TOKEN_LEITURA      -R $R

@@ -1,0 +1,57 @@
+# Registros DNS do devopsdays.com.br.
+#
+# Para mudar algo, edite este arquivo e abra um PR. O pipeline testa,
+# mostra o plano e, depois do merge, aplica na Cloudflare.
+#
+# Campos de cada registro:
+#   nome:       sem o domínio (www, poa, links.salvador). A raiz é "@".
+#   tipo:       A, AAAA, CNAME, TXT, MX, CAA, SRV ou NS.
+#   conteudo:   para onde aponta. No TXT, escreva sem aspas.
+#   proxy:      opcional, padrão false. true passa o tráfego pela Cloudflare.
+#   ttl:        opcional, padrão 3600 (ignorado com proxy: true).
+#   comentario: opcional, aparece no painel da Cloudflare.
+#   chave:      opcional, só para dois registros do mesmo tipo no mesmo nome.
+
+zona: devopsdays.com.br
+
+registros:
+  # Redirecionamentos pelo redirect.name: o CNAME aponta para o serviço e o
+  # TXT _redirect.<nome> diz para onde mandar. Sem proxy, senão o
+  # redirect.name não recebe o acesso.
+  - nome: www
+    tipo: CNAME
+    conteudo: alias.redirect.name
+    comentario: Redireciona para devopsdays.org/events
+  - nome: _redirect.www
+    tipo: TXT
+    conteudo: Redirect to https://devopsdays.org/events
+
+  - nome: poa
+    tipo: CNAME
+    conteudo: alias.redirect.name
+    comentario: Redireciona para o evento de Porto Alegre 2021
+  - nome: _redirect.poa
+    tipo: TXT
+    conteudo: Redirect to https://devopsdays.org/events/2021-porto-alegre/welcome
+
+  - nome: salvador
+    tipo: CNAME
+    conteudo: alias.redirect.name
+    comentario: Redireciona para o evento de Salvador 2019
+  - nome: _redirect.salvador
+    tipo: TXT
+    conteudo: Redirect to https://devopsdays.org/events/2019-salvador/welcome
+
+  # Site do Canva. Sem proxy, senão o Canva não emite o certificado.
+  - nome: links.salvador
+    tipo: A
+    conteudo: 103.169.142.0
+    comentario: Site no Canva
+  - nome: links.salvador
+    tipo: TXT
+    conteudo: canva-domain-verify=1123eadb-d4c6-44ec-b8fb-78430f3cfdd1
+    comentario: Verificação do domínio no Canva
+  - nome: www.links.salvador
+    tipo: A
+    conteudo: 103.169.142.0
+    comentario: Site no Canva

@@ -1,0 +1,4 @@
+zona: exemplo.com.br
+registros:
+  - { nome: www, tipo: A, conteudo: 192.0.2.1 }
+  - { nome: www, tipo: a, conteudo: 192.0.2.2 }

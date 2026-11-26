@@ -1,0 +1,46 @@
+# Todo dia confere se a Cloudflare ainda bate com o repositório. Se alguém
+# mudou um registro pelo painel, o job falha e mostra a diferença.
+name: drift
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # 9h em Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  AWS_ENDPOINT_URL_S3: https://${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN_LEITURA }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.R2_LEITURA_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_LEITURA_SECRET_ACCESS_KEY }}
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ~1.17.0
+          terraform_wrapper: false
+
+      - name: Init
+        run: terraform init
+
+      # Código de saída 2 = há diferença entre o repositório e a Cloudflare.
+      - name: Plano
+        run: |
+          set +e
+          terraform plan -lock=false -no-color -detailed-exitcode > plano.txt
+          codigo=$?
+          cat plano.txt
+          if [ "$codigo" -eq 2 ]; then
+            echo "::error::A Cloudflare não bate com o repositório. Corrija o YAML por PR ou rode o apply."
+            { echo '## Drift'; echo; echo '```'; sed -n '/Terraform will perform/,$p' plano.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$codigo"

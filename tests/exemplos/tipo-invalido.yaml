@@ -1,0 +1,3 @@
+zona: exemplo.com.br
+registros:
+  - { nome: www, tipo: ALIAS, conteudo: outro.exemplo.org }

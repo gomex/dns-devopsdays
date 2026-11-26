@@ -1,0 +1,3 @@
+zona: exemplo.com.br
+registros:
+  - { nome: "@", tipo: CNAME, conteudo: outro.exemplo.org }

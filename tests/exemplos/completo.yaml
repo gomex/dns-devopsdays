@@ -1,0 +1,6 @@
+zona: exemplo.com.br
+registros:
+  - { nome: "@", tipo: A, conteudo: 192.0.2.1, proxy: true }
+  - { nome: "@", tipo: MX, conteudo: mx.exemplo.org, prioridade: 5 }
+  - { nome: "@", tipo: TXT, conteudo: v=spf1 -all, chave: spf }
+  - { nome: "@", tipo: TXT, conteudo: '"ja-com-aspas"', chave: verificacao }

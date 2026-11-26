@@ -1,0 +1,120 @@
+# Pipeline do DNS em três etapas:
+#
+#   testes   todo PR, inclusive de fork. Não usa nenhum segredo.
+#   plano    mostra o que vai mudar na Cloudflare. Usa tokens só de leitura,
+#            então roda em PR de branch deste repositório e na main. PR de
+#            fork não recebe segredo: o plano dele aparece depois do merge,
+#            antes da aprovação do apply.
+#   aplicar  só na main, no environment `producao`, que pede aprovação de
+#            quem mantém o repositório e guarda os tokens de escrita.
+name: terraform
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  AWS_ENDPOINT_URL_S3: https://${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ~1.17.0
+          terraform_wrapper: false
+
+      - name: Formatação
+        run: terraform fmt -recursive -check -diff
+
+      - name: Init sem backend
+        run: terraform init -backend=false
+
+      - name: Validação
+        run: terraform validate
+
+      # Provider simulado: confere o YAML e as regras sem falar com a Cloudflare.
+      - name: Testes
+        run: terraform test
+
+  plano:
+    needs: testes
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN_LEITURA }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_LEITURA_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_LEITURA_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ~1.17.0
+          terraform_wrapper: false
+
+      - name: Init
+        run: terraform init
+
+      # -lock=false porque o token do R2 aqui só lê.
+      - name: Plano
+        run: |
+          set -o pipefail
+          terraform plan -lock=false -no-color | tee plano.txt
+          {
+            echo "## Plano"
+            echo
+            grep -E '^(Plan:|No changes)' plano.txt || echo "Veja o log do job."
+            echo
+            echo '<details><summary>Plano completo</summary>'
+            echo
+            echo '```'
+            sed -n '/Terraform will perform/,$p' plano.txt
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  aplicar:
+    needs: plano
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: producao
+    concurrency:
+      group: aplicar
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN_ESCRITA }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ESCRITA_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ESCRITA_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ~1.17.0
+          terraform_wrapper: false
+
+      - name: Init
+        run: terraform init
+
+      - name: Apply
+        run: terraform apply -auto-approve
+
+      - name: Servidores de nome
+        run: |
+          {
+            echo "## Zona"
+            echo
+            echo "Status: \`$(terraform output -raw status_da_zona)\`"
+            echo
+            echo "Servidores de nome para o Registro.br:"
+            terraform output -json servidores_de_nome | tr -d '[]"' | tr ',' '\n' | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -53,6 +53,15 @@ resource "terraform_data" "validacao" {
   }
 }
 
+# A zona é criada à mão no painel, uma vez, e o Terraform só a adota. Assim
+# os tokens ficam restritos a este domínio: um token limitado a uma zona não
+# consegue criar a zona, só cuidar dela depois que ela existe. Depois do
+# primeiro apply, este bloco não faz mais nada.
+import {
+  to = cloudflare_zone.this
+  id = var.cloudflare_zone_id
+}
+
 resource "cloudflare_zone" "this" {
   account = { id = var.cloudflare_account_id }
   name    = local.zona

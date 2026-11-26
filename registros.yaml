@@ -55,3 +55,27 @@ registros:
     tipo: A
     conteudo: 103.169.142.0
     comentario: Site no Canva
+
+  # Subdomínio delegado: ms.devopsdays.com.br é respondido pelos servidores
+  # do gutocarvalho.net, e não pela Cloudflare. Os registros dentro de ms
+  # são cuidados lá.
+  - nome: ms
+    tipo: NS
+    conteudo: ns1.gutocarvalho.net
+    chave: NS ms 1
+    comentario: Delegação do ms para gutocarvalho.net
+  - nome: ms
+    tipo: NS
+    conteudo: ns2.gutocarvalho.net
+    chave: NS ms 2
+    comentario: Delegação do ms para gutocarvalho.net
+  - nome: ms
+    tipo: NS
+    conteudo: ns3.gutocarvalho.net
+    chave: NS ms 3
+    comentario: Delegação do ms para gutocarvalho.net
+  - nome: ms
+    tipo: NS
+    conteudo: ns4.gutocarvalho.net
+    chave: NS ms 4
+    comentario: Delegação do ms para gutocarvalho.net

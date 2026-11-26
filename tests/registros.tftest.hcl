@@ -22,8 +22,8 @@ run "registros_atuais" {
   command = plan
 
   assert {
-    condition     = length(cloudflare_dns_record.this) == 9
-    error_message = "O registros.yaml deveria gerar 9 registros."
+    condition     = length(cloudflare_dns_record.this) == 13
+    error_message = "O registros.yaml deveria gerar 13 registros."
   }
 
   assert {
@@ -44,6 +44,11 @@ run "registros_atuais" {
   assert {
     condition     = cloudflare_dns_record.this["TXT _redirect.www"].content == "\"Redirect to https://devopsdays.org/events\""
     error_message = "O TXT deveria ganhar aspas."
+  }
+
+  assert {
+    condition     = length([for k, r in cloudflare_dns_record.this : r if r.type == "NS" && r.name == "ms.devopsdays.com.br"]) == 4
+    error_message = "O ms deveria estar delegado para 4 servidores de nome."
   }
 
   assert {
